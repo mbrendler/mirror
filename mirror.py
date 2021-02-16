@@ -62,7 +62,7 @@ def parse_options():
         '-p', '--path', dest='path', metavar='PATH',
         default=os.getenv('HOME') + '/tmp/repos', help='repository path'
     )
-    parser.set_defaults(func=cmd_list)
+    parser.set_defaults(func=cmd_help)
 
     subparsers = parser.add_subparsers()
 
@@ -99,6 +99,11 @@ def parse_options():
     )
 
     return parser.parse_args()
+
+
+def cmd_help(options):
+    sys.argv.insert(1, '--help')
+    parse_options()
 
 
 def cmd_list(options):
