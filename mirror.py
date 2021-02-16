@@ -196,8 +196,10 @@ class Repo:
     def all_for(cls, org_or_user):
         try:
             return cls.for_org(org_or_user)
-        except HTTPError:
-            return cls.for_user(org_or_user)
+        except HTTPError as e:
+            if e.status == 404:
+                return cls.for_user(org_or_user)
+            raise e
 
     @classmethod
     def for_org(cls, org):
