@@ -9,6 +9,7 @@ from pprint import pprint
 import json
 from urllib.parse import urlparse
 from urllib.request import urlopen, Request
+from urllib.error import HTTPError
 from getpass import getpass
 import importlib.util
 from functools import cache
@@ -184,7 +185,10 @@ def find_repos(options):
 class Repo:
     @classmethod
     def all_for(cls, org_or_user):
-        return cls.for_org(org_or_user) or cls.for_user(org_or_user)
+        try:
+            return cls.for_org(org_or_user)
+        except HTTPError:
+            return cls.for_user(org_or_user)
 
     @classmethod
     def for_org(cls, org):
