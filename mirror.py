@@ -107,6 +107,7 @@ def cmd_help(options):
 
 
 def cmd_list(options):
+    "list all repositories"
     repos = find_repos(options)
     for repo in repos:
         if options.raw:
@@ -117,6 +118,7 @@ def cmd_list(options):
 
 
 def cmd_fetch(options):
+    "fetch all repositories"
     repos = find_repos(options)
     current_dir = os.path.join(base_dir(options), 'current')
     os.makedirs(current_dir, exist_ok=True)
@@ -132,6 +134,7 @@ def cmd_fetch(options):
 
 
 def cmd_abandon(options, repos=None):
+    "abandon archived or deleted repositories"
     if repos is None:
         repos = find_repos(options)
     repo_dirs = [os.path.basename(repo.clone_url) for repo in repos]
@@ -148,6 +151,7 @@ def cmd_abandon(options, repos=None):
 
 
 def cmd_grep(options):
+    "grep in all repositories"
     current_dir = os.path.join(base_dir(options), 'current')
     args = [options.pattern, options.ref, '--'] + options.files
     if COLOR:
