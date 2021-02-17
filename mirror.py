@@ -13,6 +13,8 @@ from urllib.error import HTTPError
 from getpass import getpass
 import importlib.util
 from functools import cache
+from multiprocessing import Pool
+
 
 COLOR = False
 TPUT_REPO = ''
@@ -117,19 +119,23 @@ def cmd_list(options):
             print(options.format % repo.raw_data)
 
 
+def fetch_repo_worker(repo):
+    directory = os.path.basename(repo.clone_url)
+    print(TPUT_REPO + directory + TPUT_OP)
+    if os.path.exists(directory):
+        os.system('git -C '+ directory + ' fetch --all --prune')
+    else:
+        os.system('git clone --mirror ' + repo.clone_url)
+
+
 def cmd_fetch(options):
     "fetch all repositories"
     repos = find_repos(options)
     current_dir = os.path.join(base_dir(options), 'current')
     os.makedirs(current_dir, exist_ok=True)
     os.chdir(current_dir)
-    for repo in repos:
-        directory = os.path.basename(repo.clone_url)
-        print(TPUT_REPO + directory + TPUT_OP)
-        if os.path.exists(directory):
-            os.system('git -C '+ directory + ' fetch --all --prune')
-        else:
-            os.system('git clone --mirror ' + repo.clone_url)
+    with Pool(20) as p:
+        p.map(fetch_repo_worker, repos)
     cmd_abandon(options, repos=repos)
 
 
@@ -234,6 +240,12 @@ class Repo:
 
     def __repr__(self):
         return repr(self.raw_data)
+
+    def __getstate__(self):
+       return self.__dict__
+
+    def __setstate__(self, d):
+       self.__dict__ = d
 
     def __getattr__(self, name):
         return self.raw_data[name]
