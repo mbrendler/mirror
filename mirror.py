@@ -127,6 +127,15 @@ def fetch_repo_worker(repo):
     else:
         os.system('git clone --mirror ' + repo.clone_url)
 
+def main_branch_name(repo_path):
+    repo_path = quote(repo_path)
+    branches = getoutput(f"git --no-pager -C '{repo_path}' branch --list")
+    branches = branches.splitlines(False)
+    if "  main" in branches:
+        return 'main'
+    if "  master" in branches:
+        return 'master'
+    return 'HEAD'
 
 def cmd_fetch(options):
     "fetch all repositories"
@@ -156,19 +165,22 @@ def cmd_abandon(options, repos=None):
             print(directory + ' abandoned')
 
 
+def git_grep(directory, repo_path, pattern, ref, files):
+    color = '--color=always' if COLOR else ''
+    repo_path = quote(repo_path)
+    files = ' '.join(files)
+    os.system(
+        f'git --no-pager -C "{repo_path}" grep -E {pattern} {ref} -- {files}'
+        f' | sed -E "s/^/{TPUT_REPO}{directory}{TPUT_OP}:/"'
+    )
+
 def cmd_grep(options):
     "grep in all repositories"
     current_dir = os.path.join(base_dir(options), 'current')
-    args = [options.pattern, options.ref, '--'] + options.files
-    if COLOR:
-        args.insert(0, '--color=always')
-    args = ' '.join(quote(arg) for arg in args)
     for directory in os.listdir(current_dir):
         repo_path = os.path.join(current_dir, directory)
-        os.system(
-            'git --no-pager -C "' + quote(repo_path) + '" grep -E ' + args +
-            ' | sed -E "s/^/' + TPUT_REPO + directory + TPUT_OP + ':/"'
-        )
+        branch = main_branch_name(repo_path)
+        git_grep(directory, repo_path, options.pattern, branch, options.files)
 
 
 def http_get(url):
