@@ -7,7 +7,6 @@ from subprocess import getoutput
 from argparse import ArgumentParser
 from pprint import pprint
 import json
-from urllib.parse import urlparse
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError
 from getpass import getpass
