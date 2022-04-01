@@ -169,7 +169,7 @@ def git_grep(directory, repo_path, pattern, ref, files):
     repo_path = quote(repo_path)
     files = ' '.join(files)
     os.system(
-        f'git --no-pager -C "{repo_path}" grep -E {pattern} {ref} -- {files}'
+        f'git --no-pager -C "{repo_path}" grep {color} -E {pattern} {ref} -- {files}'
         f' | sed -E "s/^/{TPUT_REPO}{directory}{TPUT_OP}:/"'
     )
 
