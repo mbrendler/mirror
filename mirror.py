@@ -61,7 +61,7 @@ def parse_options():
     )
     parser.add_argument(
         '-p', '--path', dest='path', metavar='PATH',
-        default=os.getenv('HOME') + '/tmp/repos', help='repository path'
+        default=f"{os.environ['HOME']}/tmp/repos", help='repository path'
     )
     parser.set_defaults(func=cmd_help)
 
@@ -122,9 +122,9 @@ def fetch_repo_worker(repo):
     directory = os.path.basename(repo.clone_url)
     print(TPUT_REPO + directory + TPUT_OP)
     if os.path.exists(directory):
-        os.system('git -C '+ directory + ' fetch --all --prune')
+        os.system(f'git -C {directory} fetch --all --prune')
     else:
-        os.system('git clone --mirror ' + repo.clone_url)
+        os.system(f'git clone --mirror {repo.clone_url}')
 
 def main_branch_name(repo_path):
     repo_path = quote(repo_path)
@@ -220,22 +220,22 @@ class Repo:
 
     @classmethod
     def for_org(cls, org):
-        url = 'https://api.github.com/orgs/' + org + '/repos'
+        url = f'https://api.github.com/orgs/{org}/repos'
         return cls.from_url(url)
 
     @classmethod
     def for_user(cls, user):
-        url = 'https://api.github.com/users/' + user + '/repos'
+        url = f'https://api.github.com/users/{user}/repos'
         return cls.from_url(url)
 
     @classmethod
     def find(cls, org_or_user, name):
-        url = 'https://api.github.com/repos/' + org_or_user + '/' + name
+        url = f'https://api.github.com/repos/{org_or_user}/{name}'
         return cls.from_url(url)
 
     @classmethod
     def from_url(cls, url, page=1):
-        response_body = http_get(url + '?per_page=100&page=' + str(page))
+        response_body = http_get(f'{url}?per_page=100&page={page}')
         if response_body is None:
             return None
         raws = json.loads(response_body)
