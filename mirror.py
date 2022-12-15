@@ -95,9 +95,11 @@ def parse_options():
     grep_parser.add_argument(
         'pattern', metavar='PATTERN', help='Grep pattern'
     )
-    grep_parser.add_argument(
-        'files', metavar='FILE', nargs='*', help='files'
-    )
+    grep_parser.add_argument('files', metavar='FILE', nargs='*', help='files')
+
+    ls_files = subparsers.add_parser('ls-files', help=cmd_ls_files.__doc__)
+    ls_files.set_defaults(func=cmd_ls_files)
+    ls_files.add_argument('files', metavar='FILE', nargs='*', help='files')
 
     return parser.parse_args()
 
@@ -180,6 +182,24 @@ def cmd_grep(options):
         repo_path = os.path.join(current_dir, directory)
         branch = main_branch_name(repo_path)
         git_grep(directory, repo_path, options.pattern, branch, options.files)
+
+
+def ls_files(directory, repo_path, ref, files):
+    repo_path = quote(repo_path)
+    files = ' '.join(files)
+    os.system(
+        f'git --no-pager -C "{repo_path}" ls-tree --full-tree -r --name-only {ref} {files}'
+        f' | sed -E "s/^/{TPUT_REPO}{directory}{TPUT_OP}:/"'
+    )
+
+
+def cmd_ls_files(options):
+    "find files in all repositories"
+    current_dir = os.path.join(base_dir(options), 'current')
+    for directory in os.listdir(current_dir):
+        repo_path = os.path.join(current_dir, directory)
+        branch = main_branch_name(repo_path)
+        ls_files(directory, repo_path, branch, options.files)
 
 
 def http_get(url):
