@@ -11,6 +11,7 @@ from multiprocessing import Pool
 from pprint import pprint
 from shlex import quote
 from subprocess import getoutput
+from typing import Any
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -26,29 +27,30 @@ if sys.stdout.isatty():
 
 
 @cache
-def dotfile():
+def dotfile() -> Any:
     try:
         dotfile_path = os.path.join(os.environ["HOME"], ".mirror.py")
         spec = importlib.util.spec_from_file_location("dotfile", dotfile_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        module = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
+        spec.loader.exec_module(module)  # type: ignore[union-attr]
         return module
     except FileNotFoundError:
         return None
 
 
 @cache
-def github_authorization():
+def github_authorization() -> str:
     if dotfile():
-        return dotfile().github_authorization()
+        return dotfile().github_authorization()  # type: ignore[no-any-return]
     return "token " + getpass("github token: ")
 
 
-def base_dir(options):
-    return os.path.join(options.path, options.name)
+def base_dir(options: Any) -> str:
+    directory = os.path.join(options.path, options.name)
+    return directory  # type: ignore[no-any-return]
 
 
-def parse_options():
+def parse_options() -> Any:
     parser = ArgumentParser(description="Queries Github API")
     parser.add_argument(
         "name",
@@ -117,12 +119,12 @@ def parse_options():
     return parser.parse_args()
 
 
-def cmd_help(options):
+def cmd_help(options: Any) -> None:
     sys.argv.insert(1, "--help")
     parse_options()
 
 
-def cmd_list(options):
+def cmd_list(options: Any) -> None:
     "list all repositories"
     repos = find_repos(options)
     for repo in repos:
@@ -133,7 +135,7 @@ def cmd_list(options):
             print(options.format % repo.raw_data)
 
 
-def fetch_repo_worker(repo):
+def fetch_repo_worker(repo: "Repo") -> Any:
     directory = os.path.basename(repo.clone_url)
     print(TPUT_REPO + directory + TPUT_OP)
     if os.path.exists(directory):
@@ -142,10 +144,10 @@ def fetch_repo_worker(repo):
         os.system(f"git clone --mirror {repo.clone_url}")
 
 
-def main_branch_name(repo_path):
+def main_branch_name(repo_path: str) -> str:
     repo_path = quote(repo_path)
-    branches = getoutput(f"git --no-pager -C '{repo_path}' branch --list")
-    branches = branches.splitlines(False)
+    branches_str = getoutput(f"git --no-pager -C '{repo_path}' branch --list")
+    branches = branches_str.splitlines(False)
     if "  main" in branches:
         return "main"
     if "  master" in branches:
@@ -153,7 +155,7 @@ def main_branch_name(repo_path):
     return "HEAD"
 
 
-def cmd_fetch(options):
+def cmd_fetch(options: Any) -> None:
     "fetch all repositories"
     repos = find_repos(options)
     current_dir = os.path.join(base_dir(options), "current")
@@ -164,7 +166,7 @@ def cmd_fetch(options):
     cmd_abandon(options, repos=repos)
 
 
-def cmd_abandon(options, repos=None):
+def cmd_abandon(options: Any, repos: list["Repo"] | None = None) -> None:
     "abandon archived or deleted repositories"
     if repos is None:
         repos = find_repos(options)
@@ -181,17 +183,19 @@ def cmd_abandon(options, repos=None):
             print(directory + " abandoned")
 
 
-def git_grep(directory, repo_path, pattern, ref, files):
+def git_grep(
+    directory: str, repo_path: str, pattern: str, ref: str, file_list: list[str]
+) -> None:
     color = "--color=always" if COLOR else ""
     repo_path = quote(repo_path)
-    files = " ".join(files)
+    files = " ".join(file_list)
     os.system(
         f'git -C "{repo_path}" grep {color} -E {pattern} {ref} -- {files}'
         f' | sed -E "s/^/{TPUT_REPO}{directory}{TPUT_OP}:/"'
     )
 
 
-def cmd_grep(options):
+def cmd_grep(options: Any) -> None:
     "grep in all repositories"
     current_dir = os.path.join(base_dir(options), "current")
     for directory in os.listdir(current_dir):
@@ -200,16 +204,18 @@ def cmd_grep(options):
         git_grep(directory, repo_path, options.pattern, branch, options.files)
 
 
-def ls_files(directory, repo_path, ref, files):
+def ls_files(
+    directory: str, repo_path: str, ref: str, file_list: list[str]
+) -> None:
     repo_path = quote(repo_path)
-    files = " ".join(files)
+    files = " ".join(file_list)
     os.system(
         f'git -C "{repo_path}" ls-tree --full-tree -r --name-only {ref} {files}'
         f' | sed -E "s/^/{TPUT_REPO}{directory}{TPUT_OP}:/"'
     )
 
 
-def cmd_ls_files(options):
+def cmd_ls_files(options: Any) -> None:
     "find files in all repositories"
     current_dir = os.path.join(base_dir(options), "current")
     for directory in os.listdir(current_dir):
@@ -218,22 +224,25 @@ def cmd_ls_files(options):
         ls_files(directory, repo_path, branch, options.files)
 
 
-def http_get(url):
+def http_get_json(url: str) -> Any:
     request = Request(url)
     request.add_header("Authorization", github_authorization())
     request.add_header("User-Agent", "curl")
     response = urlopen(request)
-    if response.status == 200:
-        return response.read()
-    return None
+    status = response.status
+    if status == 200:
+        body = response.read()
+        if body is not None:
+            return json.loads(body)
+    raise RuntimeError(f"Nothing found for {url=!r}, {status=}")
 
 
-def github_user():
-    response_body = http_get("https://api.github.com/user")
-    return json.loads(response_body)
+def github_user() -> dict[str, Any]:
+    user = http_get_json("https://api.github.com/user")
+    return user  # type: ignore[no-any-return]
 
 
-def find_repos(options):
+def find_repos(options: Any) -> list["Repo"]:
     user_or_org = options.name or github_user()["login"]
     if hasattr(options, "repo") and options.repo:
         return [Repo.find(user_or_org, options.repo)]
@@ -246,7 +255,7 @@ def find_repos(options):
 
 class Repo:
     @classmethod
-    def all_for(cls, org_or_user):
+    def all_for(cls, org_or_user: str) -> list["Repo"]:
         try:
             return cls.for_org(org_or_user)
         except HTTPError as e:
@@ -255,50 +264,46 @@ class Repo:
             raise e
 
     @classmethod
-    def for_org(cls, org):
+    def for_org(cls, org: str) -> list["Repo"]:
         url = f"https://api.github.com/orgs/{org}/repos"
         return cls.from_url(url)
 
     @classmethod
-    def for_user(cls, user):
+    def for_user(cls, user: str) -> list["Repo"]:
         url = f"https://api.github.com/users/{user}/repos"
         return cls.from_url(url)
 
     @classmethod
-    def find(cls, org_or_user, name):
+    def find(cls, org_or_user: str, name: str) -> "Repo":
         url = f"https://api.github.com/repos/{org_or_user}/{name}"
-        return cls.from_url(url)
+        raw = http_get_json(url)
+        return cls(raw)
 
     @classmethod
-    def from_url(cls, url, page=1):
-        response_body = http_get(f"{url}?per_page=100&page={page}")
-        if response_body is None:
-            return None
-        raws = json.loads(response_body)
-        if isinstance(raws, list):
-            result = [cls(raw) for raw in raws]
-            if len(raws) == 100:
-                result.extend(cls.from_url(url, page + 1) or [])
-            return result
-        return cls(raws)
+    def from_url(cls, url: str, page: int = 1) -> list["Repo"]:
+        raws = http_get_json(f"{url}?per_page=100&page={page}")
+        result = [cls(raw) for raw in raws]
+        if len(raws) == 100:
+            result.extend(cls.from_url(url, page + 1) or [])
+        return result
 
-    def __init__(self, raw):
+    def __init__(self, raw: dict[str, Any]) -> None:
         self.raw_data = raw
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self.raw_data)
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict[str, Any]:
         return self.__dict__
 
-    def __setstate__(self, d):
+    def __setstate__(self, d: dict[str, Any]) -> None:
         self.__dict__ = d
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return self.raw_data[name]
 
 
-def main():
+def main() -> None:
     options = parse_options()
     options.func(options)
 
