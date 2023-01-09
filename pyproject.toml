@@ -3,6 +3,7 @@ line-length = 80
 
 [tool.ruff]
 line-length = 80
+ignore = ["T201", "T203"]
 select = [
   "A",
   "ARG",

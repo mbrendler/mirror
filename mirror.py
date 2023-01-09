@@ -46,8 +46,7 @@ def github_authorization() -> str:
 
 
 def base_dir(options: Any) -> str:
-    directory = os.path.join(options.path, options.name)
-    return directory  # type: ignore[no-any-return]
+    return f"{options.path}/{options.name}"
 
 
 def parse_options() -> Any:
@@ -70,7 +69,7 @@ def parse_options() -> Any:
         "--path",
         dest="path",
         metavar="PATH",
-        default=f"{os.environ['HOME']}/tmp/repos",
+        default=f"{os.environ['HOME']}/tmp/repos",  # noqa: S108
         help="repository path",
     )
     parser.set_defaults(func=cmd_help)
@@ -242,8 +241,8 @@ def http_get_json(url: str) -> Any:
 
 
 def github_user() -> dict[str, Any]:
-    user = http_get_json("https://api.github.com/user")
-    return user  # type: ignore[no-any-return]
+    url = "https://api.github.com/user"
+    return http_get_json(url)  # type: ignore[no-any-return]
 
 
 def find_repos(options: Any) -> list["Repo"]:
