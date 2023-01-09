@@ -63,7 +63,7 @@ def parse_options() -> Any:
         dest="include_archived",
         action="store_true",
         default=False,
-        help="inclue archived repositories",
+        help="include archived repositories",
     )
     parser.add_argument(
         "-p",
@@ -112,20 +112,24 @@ def parse_options() -> Any:
     grep_parser.add_argument("pattern", metavar="PATTERN", help="Grep pattern")
     grep_parser.add_argument("files", metavar="FILE", nargs="*", help="files")
 
-    ls_files = subparsers.add_parser("ls-files", help=cmd_ls_files.__doc__)
-    ls_files.set_defaults(func=cmd_ls_files)
-    ls_files.add_argument("files", metavar="FILE", nargs="*", help="files")
+    ls_files_parser = subparsers.add_parser(
+        "ls-files", help=cmd_ls_files.__doc__
+    )
+    ls_files_parser.set_defaults(func=cmd_ls_files)
+    ls_files_parser.add_argument(
+        "files", metavar="FILE", nargs="*", help="files"
+    )
 
     return parser.parse_args()
 
 
-def cmd_help(options: Any) -> None:
+def cmd_help(_options: Any) -> None:
     sys.argv.insert(1, "--help")
     parse_options()
 
 
 def cmd_list(options: Any) -> None:
-    "list all repositories"
+    """list all repositories"""
     repos = find_repos(options)
     for repo in repos:
         if options.raw:
@@ -147,7 +151,7 @@ def fetch_repo_worker(repo: "Repo") -> Any:
 def main_branch_name(repo_path: str) -> str:
     repo_path = quote(repo_path)
     branches_str = getoutput(f"git --no-pager -C '{repo_path}' branch --list")
-    branches = branches_str.splitlines(False)
+    branches = branches_str.splitlines(keepends=False)
     if "  main" in branches:
         return "main"
     if "  master" in branches:
@@ -156,18 +160,18 @@ def main_branch_name(repo_path: str) -> str:
 
 
 def cmd_fetch(options: Any) -> None:
-    "fetch all repositories"
+    """fetch all repositories"""
     repos = find_repos(options)
     current_dir = os.path.join(base_dir(options), "current")
     os.makedirs(current_dir, exist_ok=True)
     os.chdir(current_dir)
-    with Pool(20) as p:
-        p.map(fetch_repo_worker, repos)
+    with Pool(20) as pool:
+        pool.map(fetch_repo_worker, repos)
     cmd_abandon(options, repos=repos)
 
 
 def cmd_abandon(options: Any, repos: list["Repo"] | None = None) -> None:
-    "abandon archived or deleted repositories"
+    """abandon archived or deleted repositories"""
     if repos is None:
         repos = find_repos(options)
     repo_dirs = [os.path.basename(repo.clone_url) for repo in repos]
@@ -196,7 +200,7 @@ def git_grep(
 
 
 def cmd_grep(options: Any) -> None:
-    "grep in all repositories"
+    """grep in all repositories"""
     current_dir = os.path.join(base_dir(options), "current")
     for directory in os.listdir(current_dir):
         repo_path = os.path.join(current_dir, directory)
@@ -216,7 +220,7 @@ def ls_files(
 
 
 def cmd_ls_files(options: Any) -> None:
-    "find files in all repositories"
+    """find files in all repositories"""
     current_dir = os.path.join(base_dir(options), "current")
     for directory in os.listdir(current_dir):
         repo_path = os.path.join(current_dir, directory)
@@ -228,13 +232,13 @@ def http_get_json(url: str) -> Any:
     request = Request(url)
     request.add_header("Authorization", github_authorization())
     request.add_header("User-Agent", "curl")
-    response = urlopen(request)
-    status = response.status
-    if status == 200:
-        body = response.read()
-        if body is not None:
-            return json.loads(body)
-    raise RuntimeError(f"Nothing found for {url=!r}, {status=}")
+    with urlopen(request) as response:
+        status = response.status
+        if status == 200:
+            body = response.read()
+            if body is not None:
+                return json.loads(body)
+        raise RuntimeError(f"Nothing found for {url=!r}, {status=}")
 
 
 def github_user() -> dict[str, Any]:
@@ -246,11 +250,12 @@ def find_repos(options: Any) -> list["Repo"]:
     user_or_org = options.name or github_user()["login"]
     if hasattr(options, "repo") and options.repo:
         return [Repo.find(user_or_org, options.repo)]
-    else:
-        repos = Repo.all_for(user_or_org)
-        if not options.include_archived:
-            repos = [repo for repo in repos if not repo.archived]
+
+    repos = Repo.all_for(user_or_org)
+    if options.include_archived:
         return repos
+
+    return [repo for repo in repos if not repo.archived]
 
 
 class Repo:
@@ -258,10 +263,10 @@ class Repo:
     def all_for(cls, org_or_user: str) -> list["Repo"]:
         try:
             return cls.for_org(org_or_user)
-        except HTTPError as e:
-            if e.status == 404:
+        except HTTPError as exc:
+            if exc.status == 404:
                 return cls.for_user(org_or_user)
-            raise e
+            raise exc
 
     @classmethod
     def for_org(cls, org: str) -> list["Repo"]:
@@ -296,8 +301,8 @@ class Repo:
     def __getstate__(self) -> dict[str, Any]:
         return self.__dict__
 
-    def __setstate__(self, d: dict[str, Any]) -> None:
-        self.__dict__ = d
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        self.__dict__ = state
 
     def __getattr__(self, name: str) -> Any:
         return self.raw_data[name]

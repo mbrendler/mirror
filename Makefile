@@ -1,5 +1,9 @@
 .PHONY: default
-default: mypy ruff black_lint
+default: mypy ruff pylint black_lint
+
+# TODO:
+# python -m mccabe -m4  mirror.py
+# python -m bandit mirror.py
 
 .PHONY: mypy
 mypy:
@@ -8,6 +12,10 @@ mypy:
 .PHONY: ruff
 ruff:
 	ruff .
+
+.PHONY: pylint
+pylint:
+	pylint mirror.py
 
 .PHONY: black_lint
 black_lint:

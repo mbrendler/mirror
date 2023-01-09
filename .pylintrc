@@ -1,0 +1,18 @@
+[MAIN]
+
+[MESSAGE CONTROL]
+enable=
+  use-symbolic-message-instead,
+  useless-suppression
+
+disable=
+  missing-docstring,
+  too-few-public-methods,
+  wrong-import-position,
+  ungrouped-imports,
+  unexpected-keyword-arg
+
+[BASIC]
+
+[SIMILARITIES]
+ignore-imports=yes
