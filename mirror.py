@@ -149,11 +149,14 @@ def fetch_repo_worker(repo: "Repo") -> Any:
 
 def main_branch_name(repo_path: str) -> str:
     repo_path = quote(repo_path)
-    branches_str = getoutput(f"git --no-pager -C '{repo_path}' branch --list")
+    branches_str = getoutput(
+        f"git --no-pager -C '{repo_path}' "
+        "branch --list --format='%(refname:short)'"
+    )
     branches = branches_str.splitlines(keepends=False)
-    if "  main" in branches:
+    if "main" in branches:
         return "main"
-    if "  master" in branches:
+    if "master" in branches:
         return "master"
     return "HEAD"
 
