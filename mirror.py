@@ -119,6 +119,11 @@ def parse_options() -> Any:
         "files", metavar="FILE", nargs="*", help="files"
     )
 
+    main_branch_parser = subparsers.add_parser(
+        "main-branch", help=cmd_main_branch.__doc__
+    )
+    main_branch_parser.set_defaults(func=cmd_main_branch)
+
     return parser.parse_args()
 
 
@@ -208,6 +213,15 @@ def cmd_grep(options: Any) -> None:
         repo_path = os.path.join(current_dir, directory)
         branch = main_branch_name(repo_path)
         git_grep(directory, repo_path, options.pattern, branch, options.files)
+
+
+def cmd_main_branch(options: Any) -> None:
+    """which repository uses main and which master"""
+    current_dir = os.path.join(base_dir(options), "current")
+    for directory in os.listdir(current_dir):
+        repo_path = os.path.join(current_dir, directory)
+        branch = main_branch_name(repo_path)
+        print(f"{TPUT_REPO}{directory}{TPUT_OP}: {branch}")
 
 
 def ls_files(
