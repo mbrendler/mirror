@@ -108,6 +108,14 @@ def parse_options() -> Any:
     grep_parser.add_argument(
         "--ref", dest="ref", metavar="REF", default="HEAD", help="Git ref"
     )
+    grep_parser.add_argument(
+        "--ignore",
+        dest="ignore_repos",
+        nargs="+",
+        metavar="REPO",
+        default=[],
+        help="ignore repositories"
+    )
     grep_parser.add_argument("pattern", metavar="PATTERN", help="Grep pattern")
     grep_parser.add_argument("files", metavar="FILE", nargs="*", help="files")
 
@@ -210,6 +218,8 @@ def cmd_grep(options: Any) -> None:
     """grep in all repositories"""
     current_dir = os.path.join(base_dir(options), "current")
     for directory in os.listdir(current_dir):
+        if os.path.basename(directory) in options.ignore_repos:
+            continue
         repo_path = os.path.join(current_dir, directory)
         branch = main_branch_name(repo_path)
         git_grep(directory, repo_path, options.pattern, branch, options.files)
